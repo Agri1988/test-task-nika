@@ -38,13 +38,27 @@ class Disease(Entry):
     subcategory: Optional = None
 
 
+def done_callback(task: asyncio.Task):
+    try:
+        result = task.done()
+        print((str(result)), flush=True)
+    except Exception as e:
+        print(str(e), flush=True)
+
+
+def create_task(coro):
+    task = asyncio.create_task(coro)
+    task.add_done_callback(done_callback)
+    return task
+
+
 def print_counter_decorator(func: Callable) -> Callable:
     counter = 1
 
     def wrapped(*args, **kwargs):
         nonlocal counter
         returned_data = func(*args, **kwargs)
-        print(counter, returned_data, sep="\t")
+        print(counter, returned_data, sep="\t", flush=True)
         counter += 1
         return returned_data
     return wrapped
@@ -62,14 +76,15 @@ async def get_page_content(page_url: str, client: AsyncClient, attempt: int = 1)
         print(
             f"Attempt {attempt} to request {page_url}. "
             f"Got {exc}, "
-            f"going to sleep {REST} seconds and will try again...."
+            f"going to sleep {REST} seconds and will try again....",
+            flush=True
         )
         counter = 0
         while counter < REST:
             counter += 1
             await asyncio.sleep(1)
         if attempt < 10:
-            print(f"Retry request to {page_url}")
+            print(f"Retry request to {page_url}", flush=True)
             return await get_page_content(page_url=page_url, client=client, attempt=attempt + 1)
         else:
             raise RequestError(f"{exc}")
@@ -183,7 +198,6 @@ async def main():
             client=client,
             entry_class=Category,
         )
-        print(categories)
         subcategory_list = await get_child_entries(
             parent_list=categories,
             entry_class=SubCategory,
@@ -191,7 +205,6 @@ async def main():
             client=client,
             list_selector={"class": "i51"},
         )
-        print(subcategory_list)
         disease_list = await get_child_entries(
             parent_list=subcategory_list,
             entry_class=Disease,
@@ -199,9 +212,10 @@ async def main():
             client=client,
             list_selector={"class": "i51"},
         )
-        print(disease_list)
         medical_codes = disease_to_medical_code_tuple(disease_list=disease_list)
+        print("Parsing has been finished. Insert data to the DB", sep="\n", flush=True)
         insert_medical_codes(medical_codes=medical_codes)
+        print("Insert has been completed.", flush=True)
 
 
 if __name__ == "__main__":

@@ -1,16 +1,30 @@
 import os
-from typing import List, Tuple, Iterable
+import time
+from typing import Iterable
 
 import mysql.connector
+from mysql.connector import DatabaseError
 
 config = {
-    "user": os.environ.get("DB_USER"),
-    "password": os.environ.get("DB_PASSWORD"),
-    "host": os.environ.get("DB_HOST"),
-    "port": os.environ.get("DB_PORT"),
-    "database": os.environ.get("DB_NAME"),
+    "user": os.environ.get("MYSQL_USER"),
+    "password": os.environ.get("MYSQL_PASSWORD"),
+    "host": os.environ.get("MYSQL_HOST"),
+    "port": os.environ.get("MYSQL_PORT"),
+    "database": os.environ.get("MYSQL_DATABASE"),
     "raise_on_warnings": True,
 }
+
+
+def check_db_connection():
+    while True:
+        try:
+            print("Check DB connection", flush=True)
+            cnx = mysql.connector.connect(**config)
+            cnx.ping()
+            return True
+        except DatabaseError:
+            print(f"Connection failed. Sleep 5 seconds", flush=True)
+            time.sleep(5)
 
 
 def create_tables():
@@ -27,8 +41,9 @@ def create_tables():
         cnx = mysql.connector.connect(**config)
         cursor = cnx.cursor()
         cursor.execute(query)
+        print("Table created", flush=True)
     except mysql.connector.Error as err:
-        print(f"Something went wrong. Error: {err}")
+        print(f"Something went wrong. Error: {err}", flush=True)
     else:
         cnx.close()
 
@@ -47,10 +62,5 @@ def insert_medical_codes(medical_codes: Iterable):
 
 
 if __name__ == "__main__":
-    # create_tables()
-    insert_medical_codes(
-        (
-            ("qwe", "asd", "zxc", "rty"),
-            ("qwe", "asd", "tyu", "ghj"),
-        )
-    )
+    if check_db_connection():
+        create_tables()
